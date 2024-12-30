@@ -59,7 +59,7 @@ ButtonComboModule_Error ButtonComboModule_AddButtonComboSimplePressDown(const ch
 
 ButtonComboModule_Error ButtonComboModule_AddButtonComboSimpleHold(const char *label,
                                                                    ButtonComboModule_Buttons buttonCombo,
-                                                                   uint32_t holdDurationInFrames,
+                                                                   uint32_t holdDurationInMs,
                                                                    ButtonComboModule_ComboCallback callback,
                                                                    void *context,
                                                                    ButtonComboModule_ComboHandle *handleOut);
@@ -103,7 +103,7 @@ ButtonComboModule_Error ButtonComboModule_UpdateButtonCombo(ButtonComboModule_Co
                                                             ButtonComboModule_ComboStatus *outStatus);
 
 ButtonComboModule_Error ButtonComboModule_UpdateHoldDuration(ButtonComboModule_ComboHandle handle,
-                                                             uint32_t holdDurationInFrames);
+                                                             uint32_t holdDurationInMs);
 
 ButtonComboModule_Error ButtonComboModule_GetButtonComboMeta(ButtonComboModule_ComboHandle handle,
                                                              ButtonComboModule_MetaOptionsOut *outOptions);
