@@ -16,7 +16,7 @@ static ButtonComboModule_Error (*sBCMUpdateButtonComboMeta)(ButtonComboModule_Co
 static ButtonComboModule_Error (*sBCMUpdateButtonComboCallback)(ButtonComboModule_ComboHandle handle, const ButtonComboModule_CallbackOptions *options)                                      = nullptr;
 static ButtonComboModule_Error (*sBCMUpdateControllerMask)(ButtonComboModule_ComboHandle handle, ButtonComboModule_ControllerTypes controllerMask, ButtonComboModule_ComboStatus *outStatus) = nullptr;
 static ButtonComboModule_Error (*sBCMUpdateButtonCombo)(ButtonComboModule_ComboHandle handle, ButtonComboModule_Buttons combo, ButtonComboModule_ComboStatus *outStatus)                     = nullptr;
-static ButtonComboModule_Error (*sBCMUpdateHoldDuration)(ButtonComboModule_ComboHandle handle, uint32_t holdDurationInFrames)                                                                = nullptr;
+static ButtonComboModule_Error (*sBCMUpdateHoldDuration)(ButtonComboModule_ComboHandle handle, uint32_t holdDurationInMs)                                                                    = nullptr;
 static ButtonComboModule_Error (*sBCMGetButtonComboMeta)(ButtonComboModule_ComboHandle handle, ButtonComboModule_MetaOptionsOut *outOptions)                                                 = nullptr;
 static ButtonComboModule_Error (*sBCMGetButtonComboCallback)(ButtonComboModule_ComboHandle handle, ButtonComboModule_CallbackOptions *outOptions)                                            = nullptr;
 static ButtonComboModule_Error (*sBCMGetButtonComboInfoEx)(ButtonComboModule_ComboHandle handle, ButtonComboModule_ButtonComboInfoEx *outOptions)                                            = nullptr;
@@ -210,7 +210,7 @@ ButtonComboModule_Error ButtonComboModule_AddButtonComboSimplePressDown(
 ButtonComboModule_Error ButtonComboModule_AddButtonComboSimpleHold(
         const char *label,
         const ButtonComboModule_Buttons buttonCombo,
-        const uint32_t holdDurationInFrames,
+        const uint32_t holdDurationInMs,
         const ButtonComboModule_ComboCallback callback,
         void *context,
         ButtonComboModule_ComboHandle *outHandle,
@@ -219,7 +219,7 @@ ButtonComboModule_Error ButtonComboModule_AddButtonComboSimpleHold(
     options.buttonComboOptions.type                      = BUTTON_COMBO_MODULE_TYPE_HOLD;
     options.buttonComboOptions.basicCombo.combo          = buttonCombo;
     options.buttonComboOptions.basicCombo.controllerMask = BUTTON_COMBO_MODULE_CONTROLLER_ALL;
-    options.buttonComboOptions.optionalHoldForXFrames    = holdDurationInFrames;
+    options.buttonComboOptions.optionalHoldForXMs        = holdDurationInMs;
 
     return ButtonComboModule_AddButtonCombo(&options, outHandle, outStatus);
 }
@@ -340,7 +340,7 @@ ButtonComboModule_Error ButtonComboModule_UpdateButtonCombo(const ButtonComboMod
 }
 
 ButtonComboModule_Error ButtonComboModule_UpdateHoldDuration(const ButtonComboModule_ComboHandle handle,
-                                                             const uint32_t holdDurationInFrames) {
+                                                             const uint32_t holdDurationInMs) {
     if (sButtonComboModuleVersion == BUTTON_COMBO_MODULE_API_VERSION_ERROR) {
         return BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED;
     }
@@ -352,7 +352,7 @@ ButtonComboModule_Error ButtonComboModule_UpdateHoldDuration(const ButtonComboMo
         return BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT;
     }
 
-    return sBCMUpdateHoldDuration(handle, holdDurationInFrames);
+    return sBCMUpdateHoldDuration(handle, holdDurationInMs);
 }
 
 ButtonComboModule_Error ButtonComboModule_GetButtonComboMeta(const ButtonComboModule_ComboHandle handle,

@@ -150,7 +150,7 @@ typedef struct ButtonComboModule_ButtonComboOptions {
 typedef struct ButtonComboModule_ButtonComboInfoEx {
     ButtonComboModule_ComboType type;
     ButtonComboModule_ButtonComboOptions basicCombo;
-    uint32_t optionalHoldForXFrames;
+    uint32_t optionalHoldForXMs;
 } ButtonComboModule_ButtonComboInfoEx;
 
 typedef struct ButtonComboModule_ComboOptions {
