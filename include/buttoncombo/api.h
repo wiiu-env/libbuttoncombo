@@ -124,3 +124,112 @@ ButtonComboModule_Error ButtonComboModule_DetectButtonCombo_Blocking(const Butto
 #ifdef __cplusplus
 }
 #endif
+
+#ifdef __cplusplus
+
+#include "ButtonCombo.h"
+#include <optional>
+#include <string_view>
+
+namespace ButtonComboModule {
+    std::string_view GetStatusStr(ButtonComboModule_Error status);
+
+    std::optional<ButtonCombo> CreateComboPressDownEx(std::string_view label,
+                                                      ButtonComboModule_ControllerTypes controllerMask,
+                                                      ButtonComboModule_Buttons combo,
+                                                      ButtonComboModule_ComboCallback callback,
+                                                      void *context,
+                                                      bool observer,
+                                                      ButtonComboModule_ComboStatus &outStatus,
+                                                      ButtonComboModule_Error &outError) noexcept;
+
+    std::optional<ButtonCombo> CreateComboPressDown(std::string_view label,
+                                                    ButtonComboModule_Buttons combo,
+                                                    ButtonComboModule_ComboCallback callback,
+                                                    void *context,
+                                                    ButtonComboModule_ComboStatus &outStatus,
+                                                    ButtonComboModule_Error &outError) noexcept;
+
+    std::optional<ButtonCombo> CreateComboPressDownObserver(std::string_view label,
+                                                            ButtonComboModule_Buttons combo,
+                                                            ButtonComboModule_ComboCallback callback,
+                                                            void *context,
+                                                            ButtonComboModule_ComboStatus &outStatus,
+                                                            ButtonComboModule_Error &outError) noexcept;
+
+    std::optional<ButtonCombo> CreateComboHoldEx(std::string_view label,
+                                                 ButtonComboModule_ControllerTypes controllerMask,
+                                                 ButtonComboModule_Buttons combo,
+                                                 uint32_t holdDurationInMs,
+                                                 ButtonComboModule_ComboCallback callback,
+                                                 void *context,
+                                                 bool observer,
+                                                 ButtonComboModule_ComboStatus &outStatus,
+                                                 ButtonComboModule_Error &outError) noexcept;
+
+    std::optional<ButtonCombo> CreateComboHold(std::string_view label,
+                                               ButtonComboModule_Buttons combo,
+                                               uint32_t holdDurationInMs,
+                                               ButtonComboModule_ComboCallback callback,
+                                               void *context,
+                                               ButtonComboModule_ComboStatus &outStatus,
+                                               ButtonComboModule_Error &outError) noexcept;
+
+    std::optional<ButtonCombo> CreateComboHoldObserver(std::string_view label,
+                                                       ButtonComboModule_Buttons combo,
+                                                       uint32_t holdDurationInMs,
+                                                       ButtonComboModule_ComboCallback callback,
+                                                       void *context,
+                                                       ButtonComboModule_ComboStatus &outStatus,
+                                                       ButtonComboModule_Error &outError) noexcept;
+
+
+    ButtonCombo CreateComboPressDownEx(std::string_view label,
+                                       ButtonComboModule_ControllerTypes controllerMask,
+                                       ButtonComboModule_Buttons combo,
+                                       ButtonComboModule_ComboCallback callback,
+                                       void *context,
+                                       bool observer,
+                                       ButtonComboModule_ComboStatus &outStatus);
+
+    ButtonCombo CreateComboPressDown(std::string_view label,
+                                     ButtonComboModule_Buttons combo,
+                                     ButtonComboModule_ComboCallback callback,
+                                     void *context,
+                                     ButtonComboModule_ComboStatus &outStatus);
+
+    ButtonCombo CreateComboPressDownObserver(std::string_view label,
+                                             ButtonComboModule_Buttons combo,
+                                             ButtonComboModule_ComboCallback callback,
+                                             void *context,
+                                             ButtonComboModule_ComboStatus &outStatus);
+
+    ButtonCombo CreateComboHoldEx(std::string_view label,
+                                  ButtonComboModule_ControllerTypes controllerMask,
+                                  ButtonComboModule_Buttons combo,
+                                  uint32_t holdDurationInMs,
+                                  ButtonComboModule_ComboCallback callback,
+                                  void *context,
+                                  bool observer,
+                                  ButtonComboModule_ComboStatus &outStatus);
+
+    ButtonCombo CreateComboHold(std::string_view label,
+                                ButtonComboModule_Buttons combo,
+                                uint32_t holdDurationInMs,
+                                ButtonComboModule_ComboCallback callback,
+                                void *context,
+                                ButtonComboModule_ComboStatus &outStatus);
+
+    ButtonCombo CreateComboHoldObserver(std::string_view label,
+                                        ButtonComboModule_Buttons combo,
+                                        uint32_t holdDurationInMs,
+                                        ButtonComboModule_ComboCallback callback,
+                                        void *context,
+                                        ButtonComboModule_ComboStatus &outStatus);
+    ButtonComboModule_Error CheckComboAvailable(const ButtonComboModule_ButtonComboOptions &options,
+                                                ButtonComboModule_ComboStatus &outStatus);
+
+    ButtonComboModule_Error DetectButtonCombo_Blocking(const ButtonComboModule_DetectButtonComboOptions &options,
+                                                       ButtonComboModule_Buttons &outButtons);
+} // namespace ButtonComboModule
+#endif
