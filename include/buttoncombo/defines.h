@@ -123,7 +123,7 @@ typedef struct ButtonComboModule_DetectButtonComboOptions {
     ButtonComboModule_Buttons abortButtonCombo;
 } ButtonComboModule_DetectButtonComboOptions;
 
-typedef void (*ButtonComboModule_ComboCallback)(ButtonComboModule_ComboHandle handle, void *context);
+typedef void (*ButtonComboModule_ComboCallback)(ButtonComboModule_ControllerTypes triggeredBy, ButtonComboModule_ComboHandle handle, void *context);
 
 #define BUTTON_COMBO_MODULE_COMBO_OPTIONS_VERSION 1
 #define BUTTON_COMBO_MODULE_API_VERSION_ERROR     (-0xFF)
