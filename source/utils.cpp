@@ -1,6 +1,6 @@
 #include "logger.h"
+#include <buttoncombo/api.h>
 #include <buttoncombo/defines.h>
-#include <buttoncombo/manager.h>
 #include <coreinit/debug.h>
 #include <coreinit/dynload.h>
 #include <cstdarg>
