@@ -41,6 +41,14 @@ typedef enum ButtonComboModule_Buttons {
     BCMPAD_BUTTON_TV = 0x00010000,
     //! The reserved bit
     BCMPAD_BUTTON_RESERVED_BIT = 0x80000,
+    //! The 1 button
+    BCMPAD_BUTTON_1 = 0x0001,
+    //! The 2 button
+    BCMPAD_BUTTON_2 = 0x0002,
+    //! The C button
+    BCMPAD_BUTTON_C = 0x100000,
+    //! The Z button
+    BCMPAD_BUTTON_Z = 0x200000,
 } ButtonComboModule_Buttons;
 WUT_ENUM_BITMASK_TYPE(ButtonComboModule_Buttons);
 
