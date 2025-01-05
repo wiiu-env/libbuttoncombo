@@ -14,6 +14,13 @@ extern "C" {
 const char *ButtonComboModule_GetStatusStr(ButtonComboModule_Error status);
 
 /**
+ * Returns a ButtonComboModule_ControllerTypes as a string
+ * @param controller
+ * @return String representation of a given controller
+**/
+const char *ButtonComboModule_GetControllerTypeStr(ButtonComboModule_ControllerTypes controller);
+
+/**
  * This function has to be called before any other function of this lib (except ButtonComboModule_GetVersion) can be used.
  *
  * @return  BUTTON_COMBO_MODULE_ERROR_SUCCESS:                 The library has been initialized successfully. Other functions can now be used.<br>
@@ -133,6 +140,8 @@ ButtonComboModule_Error ButtonComboModule_DetectButtonCombo_Blocking(const Butto
 
 namespace ButtonComboModule {
     std::string_view GetStatusStr(ButtonComboModule_Error status);
+
+    std::string_view GetControllerTypeStr(ButtonComboModule_ControllerTypes controller);
 
     std::optional<ButtonCombo> CreateComboPressDownEx(std::string_view label,
                                                       ButtonComboModule_ControllerTypes controllerMask,

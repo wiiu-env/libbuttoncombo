@@ -62,6 +62,31 @@ const char *ButtonComboModule_GetStatusStr(const ButtonComboModule_Error status)
     return "BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR";
 }
 
+const char *ButtonComboModule_GetControllerTypeStr(const ButtonComboModule_ControllerTypes controller) {
+    switch (controller) {
+        case BUTTON_COMBO_MODULE_CONTROLLER_VPAD_0:
+            return "BUTTON_COMBO_MODULE_CONTROLLER_VPAD_0";
+        case BUTTON_COMBO_MODULE_CONTROLLER_VPAD_1:
+            return "BUTTON_COMBO_MODULE_CONTROLLER_VPAD_1";
+        case BUTTON_COMBO_MODULE_CONTROLLER_WPAD_0:
+            return "BUTTON_COMBO_MODULE_CONTROLLER_WPAD_0";
+        case BUTTON_COMBO_MODULE_CONTROLLER_WPAD_1:
+            return "BUTTON_COMBO_MODULE_CONTROLLER_WPAD_1";
+        case BUTTON_COMBO_MODULE_CONTROLLER_WPAD_2:
+            return "BUTTON_COMBO_MODULE_CONTROLLER_WPAD_2";
+        case BUTTON_COMBO_MODULE_CONTROLLER_WPAD_3:
+            return "BUTTON_COMBO_MODULE_CONTROLLER_WPAD_3";
+        case BUTTON_COMBO_MODULE_CONTROLLER_WPAD_4:
+            return "BUTTON_COMBO_MODULE_CONTROLLER_WPAD_4";
+        case BUTTON_COMBO_MODULE_CONTROLLER_WPAD_5:
+            return "BUTTON_COMBO_MODULE_CONTROLLER_WPAD_5";
+        case BUTTON_COMBO_MODULE_CONTROLLER_WPAD_6:
+            return "BUTTON_COMBO_MODULE_CONTROLLER_WPAD_6";
+        default:;
+    }
+    return "<UNKNOWN OR MORE THAN ONE CONTROLLER>";
+}
+
 ButtonComboModule_Error ButtonComboModule_InitLibrary() {
     if (sLibInitDone) {
         return BUTTON_COMBO_MODULE_ERROR_SUCCESS;
