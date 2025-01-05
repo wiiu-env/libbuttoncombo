@@ -10,6 +10,10 @@ namespace ButtonComboModule {
         return ButtonComboModule_GetStatusStr(status);
     }
 
+    std::string_view GetControllerTypeStr(const ButtonComboModule_ControllerTypes controller) {
+        return ButtonComboModule_GetControllerTypeStr(controller);
+    }
+
     std::optional<ButtonCombo> CreateComboPressDownEx(const std::string_view label,
                                                       const ButtonComboModule_ControllerTypes controllerMask,
                                                       const ButtonComboModule_Buttons combo,
