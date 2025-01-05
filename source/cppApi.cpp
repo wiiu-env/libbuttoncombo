@@ -106,19 +106,19 @@ namespace ButtonComboModule {
         return std::move(*res);
     }
 
-    ButtonCombo CreatePressDown(const std::string_view label,
-                                const ButtonComboModule_Buttons combo,
-                                const ButtonComboModule_ComboCallback callback,
-                                void *context,
-                                ButtonComboModule_ComboStatus &outStatus) {
+    ButtonCombo CreateComboPressDown(const std::string_view label,
+                                     const ButtonComboModule_Buttons combo,
+                                     const ButtonComboModule_ComboCallback callback,
+                                     void *context,
+                                     ButtonComboModule_ComboStatus &outStatus) {
         return CreateComboPressDownEx(label, BUTTON_COMBO_MODULE_CONTROLLER_ALL, combo, callback, context, false, outStatus);
     }
 
-    ButtonCombo CreatePressDownObserver(const std::string_view label,
-                                        const ButtonComboModule_Buttons combo,
-                                        const ButtonComboModule_ComboCallback callback,
-                                        void *context,
-                                        ButtonComboModule_ComboStatus &outStatus) {
+    ButtonCombo CreateComboPressDownObserver(const std::string_view label,
+                                             const ButtonComboModule_Buttons combo,
+                                             const ButtonComboModule_ComboCallback callback,
+                                             void *context,
+                                             ButtonComboModule_ComboStatus &outStatus) {
         return CreateComboPressDownEx(label, BUTTON_COMBO_MODULE_CONTROLLER_ALL, combo, callback, context, true, outStatus);
     }
 
