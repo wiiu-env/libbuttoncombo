@@ -6,6 +6,7 @@
 #include <stdexcept>
 
 namespace ButtonComboModule {
+
     std::optional<ButtonCombo> ButtonCombo::Create(const ButtonComboModule_ComboOptions &options,
                                                    ButtonComboModule_ComboStatus &outStatus,
                                                    ButtonComboModule_Error &outError) noexcept {

@@ -87,6 +87,18 @@ const char *ButtonComboModule_GetControllerTypeStr(const ButtonComboModule_Contr
     return "<UNKNOWN OR MORE THAN ONE CONTROLLER>";
 }
 
+const char *ButtonComboModule_GetComboStatusStr(ButtonComboModule_ComboStatus status) {
+    switch (status) {
+        case BUTTON_COMBO_MODULE_COMBO_STATUS_INVALID_STATUS:
+            return "BUTTON_COMBO_MODULE_COMBO_STATUS_INVALID_STATUS";
+        case BUTTON_COMBO_MODULE_COMBO_STATUS_VALID:
+            return "BUTTON_COMBO_MODULE_COMBO_STATUS_VALID";
+        case BUTTON_COMBO_MODULE_COMBO_STATUS_CONFLICT:
+            return "BUTTON_COMBO_MODULE_COMBO_STATUS_CONFLICT";
+    }
+    return "BUTTON_COMBO_MODULE_COMBO_STATUS_INVALID_STATUS";
+}
+
 ButtonComboModule_Error ButtonComboModule_InitLibrary() {
     if (sLibInitDone) {
         return BUTTON_COMBO_MODULE_ERROR_SUCCESS;
@@ -189,66 +201,6 @@ ButtonComboModule_Error ButtonComboModule_GetVersion(ButtonComboModule_APIVersio
     return sBCMGetVersionFn(outVersion);
 }
 
-namespace {
-    ButtonComboModule_ComboOptions getBaseComboOptions(const char *label,
-                                                       const ButtonComboModule_ComboCallback callback,
-                                                       void *context) {
-        ButtonComboModule_ComboOptions comboOptions = {};
-        comboOptions.version                        = BUTTON_COMBO_MODULE_COMBO_OPTIONS_VERSION;
-        comboOptions.metaOptions.label              = label;
-        comboOptions.callbackOptions.callback       = callback;
-        comboOptions.callbackOptions.context        = context;
-        return comboOptions;
-    }
-} // namespace
-
-ButtonComboModule_Error ButtonComboModule_AddButtonComboSimplePressDownEx(
-        const char *label,
-        const ButtonComboModule_Buttons buttonCombo,
-        const ButtonComboModule_ControllerTypes controllerMask,
-        const ButtonComboModule_ComboCallback callback,
-        void *context,
-        ButtonComboModule_ComboHandle *outHandle,
-        ButtonComboModule_ComboStatus *outStatus) {
-    ButtonComboModule_ComboOptions options               = getBaseComboOptions(label, callback, context);
-    options.buttonComboOptions.type                      = BUTTON_COMBO_MODULE_TYPE_PRESS_DOWN;
-    options.buttonComboOptions.basicCombo.combo          = buttonCombo;
-    options.buttonComboOptions.basicCombo.controllerMask = controllerMask;
-
-    return ButtonComboModule_AddButtonCombo(&options, outHandle, outStatus);
-}
-
-ButtonComboModule_Error ButtonComboModule_AddButtonComboSimplePressDown(
-        const char *label,
-        const ButtonComboModule_Buttons buttonCombo,
-        const ButtonComboModule_ComboCallback callback,
-        void *context,
-        ButtonComboModule_ComboHandle *handleOut) {
-    return ButtonComboModule_AddButtonComboSimplePressDownEx(label,
-                                                             buttonCombo,
-                                                             BUTTON_COMBO_MODULE_CONTROLLER_ALL,
-                                                             callback,
-                                                             context,
-                                                             handleOut);
-}
-
-ButtonComboModule_Error ButtonComboModule_AddButtonComboSimpleHold(
-        const char *label,
-        const ButtonComboModule_Buttons buttonCombo,
-        const uint32_t holdDurationInMs,
-        const ButtonComboModule_ComboCallback callback,
-        void *context,
-        ButtonComboModule_ComboHandle *outHandle,
-        ButtonComboModule_ComboStatus *outStatus) {
-    ButtonComboModule_ComboOptions options               = getBaseComboOptions(label, callback, context);
-    options.buttonComboOptions.type                      = BUTTON_COMBO_MODULE_TYPE_HOLD;
-    options.buttonComboOptions.basicCombo.combo          = buttonCombo;
-    options.buttonComboOptions.basicCombo.controllerMask = BUTTON_COMBO_MODULE_CONTROLLER_ALL;
-    options.buttonComboOptions.optionalHoldForXMs        = holdDurationInMs;
-
-    return ButtonComboModule_AddButtonCombo(&options, outHandle, outStatus);
-}
-
 ButtonComboModule_Error ButtonComboModule_AddButtonCombo(const ButtonComboModule_ComboOptions *options,
                                                          ButtonComboModule_ComboHandle *outHandle,
                                                          ButtonComboModule_ComboStatus *outStatus) {
@@ -259,11 +211,94 @@ ButtonComboModule_Error ButtonComboModule_AddButtonCombo(const ButtonComboModule
         return BUTTON_COMBO_MODULE_ERROR_UNSUPPORTED_COMMAND;
     }
 
-    if (outHandle == nullptr) {
+    if (options == nullptr || outHandle == nullptr) {
         return BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT;
+    }
+    if (options->version != BUTTON_COMBO_MODULE_COMBO_OPTIONS_VERSION) {
+        return BUTTON_COMBO_MODULE_ERROR_INCOMPATIBLE_OPTIONS_VERSION;
     }
 
     return sBCMAddButtonComboFn(options, outHandle, outStatus);
+}
+
+
+ButtonComboModule_Error ButtonComboModule_AddButtonComboPressDownEx(const char *label,
+                                                                    const ButtonComboModule_ControllerTypes controllerMask,
+                                                                    const ButtonComboModule_Buttons combo,
+                                                                    const ButtonComboModule_ComboCallback callback,
+                                                                    void *context,
+                                                                    const bool observer,
+                                                                    ButtonComboModule_ComboHandle *outHandle,
+                                                                    ButtonComboModule_ComboStatus *outStatus) {
+    ButtonComboModule_ComboOptions options               = {};
+    options.version                                      = BUTTON_COMBO_MODULE_COMBO_OPTIONS_VERSION;
+    options.metaOptions.label                            = label;
+    options.callbackOptions                              = {.callback = callback, .context = context};
+    options.buttonComboOptions.type                      = observer ? BUTTON_COMBO_MODULE_COMBO_TYPE_PRESS_DOWN_OBSERVER : BUTTON_COMBO_MODULE_COMBO_TYPE_PRESS_DOWN;
+    options.buttonComboOptions.basicCombo.combo          = combo;
+    options.buttonComboOptions.basicCombo.controllerMask = controllerMask;
+    options.buttonComboOptions.optionalHoldForXMs        = 0;
+
+    return ButtonComboModule_AddButtonCombo(&options, outHandle, outStatus);
+}
+
+ButtonComboModule_Error ButtonComboModule_AddButtonComboPressDown(const char *label,
+                                                                  const ButtonComboModule_Buttons combo,
+                                                                  const ButtonComboModule_ComboCallback callback,
+                                                                  void *context,
+                                                                  ButtonComboModule_ComboHandle *outHandle,
+                                                                  ButtonComboModule_ComboStatus *outStatus) {
+    return ButtonComboModule_AddButtonComboPressDownEx(label, BUTTON_COMBO_MODULE_CONTROLLER_ALL, combo, callback, context, false, outHandle, outStatus);
+}
+
+ButtonComboModule_Error ButtonComboModule_AddButtonComboPressDownObserver(const char *label,
+                                                                          const ButtonComboModule_Buttons combo,
+                                                                          const ButtonComboModule_ComboCallback callback,
+                                                                          void *context,
+                                                                          ButtonComboModule_ComboHandle *outHandle,
+                                                                          ButtonComboModule_ComboStatus *outStatus) {
+    return ButtonComboModule_AddButtonComboPressDownEx(label, BUTTON_COMBO_MODULE_CONTROLLER_ALL, combo, callback, context, true, outHandle, outStatus);
+}
+
+ButtonComboModule_Error ButtonComboModule_AddButtonComboHoldEx(const char *label,
+                                                               const ButtonComboModule_ControllerTypes controllerMask,
+                                                               const ButtonComboModule_Buttons combo,
+                                                               const uint32_t holdDurationInMs,
+                                                               const ButtonComboModule_ComboCallback callback,
+                                                               void *context,
+                                                               const bool observer,
+                                                               ButtonComboModule_ComboHandle *outHandle,
+                                                               ButtonComboModule_ComboStatus *outStatus) {
+    ButtonComboModule_ComboOptions options               = {};
+    options.version                                      = BUTTON_COMBO_MODULE_COMBO_OPTIONS_VERSION;
+    options.metaOptions.label                            = label;
+    options.callbackOptions                              = {.callback = callback, .context = context};
+    options.buttonComboOptions.type                      = observer ? BUTTON_COMBO_MODULE_COMBO_TYPE_HOLD_OBSERVER : BUTTON_COMBO_MODULE_COMBO_TYPE_HOLD;
+    options.buttonComboOptions.basicCombo.combo          = combo;
+    options.buttonComboOptions.basicCombo.controllerMask = controllerMask;
+    options.buttonComboOptions.optionalHoldForXMs        = holdDurationInMs;
+
+    return ButtonComboModule_AddButtonCombo(&options, outHandle, outStatus);
+}
+
+ButtonComboModule_Error ButtonComboModule_AddButtonComboHold(const char *label,
+                                                             const ButtonComboModule_Buttons combo,
+                                                             const uint32_t holdDurationInMs,
+                                                             const ButtonComboModule_ComboCallback callback,
+                                                             void *context,
+                                                             ButtonComboModule_ComboHandle *outHandle,
+                                                             ButtonComboModule_ComboStatus *outStatus) {
+    return ButtonComboModule_AddButtonComboHoldEx(label, BUTTON_COMBO_MODULE_CONTROLLER_ALL, combo, holdDurationInMs, callback, context, false, outHandle, outStatus);
+}
+
+ButtonComboModule_Error ButtonComboModule_AddButtonComboHoldObserver(const char *label,
+                                                                     const ButtonComboModule_Buttons combo,
+                                                                     const uint32_t holdDurationInMs,
+                                                                     const ButtonComboModule_ComboCallback callback,
+                                                                     void *context,
+                                                                     ButtonComboModule_ComboHandle *outHandle,
+                                                                     ButtonComboModule_ComboStatus *outStatus) {
+    return ButtonComboModule_AddButtonComboHoldEx(label, BUTTON_COMBO_MODULE_CONTROLLER_ALL, combo, holdDurationInMs, callback, context, true, outHandle, outStatus);
 }
 
 ButtonComboModule_Error ButtonComboModule_RemoveButtonCombo(const ButtonComboModule_ComboHandle handle) {
@@ -274,7 +309,7 @@ ButtonComboModule_Error ButtonComboModule_RemoveButtonCombo(const ButtonComboMod
         return BUTTON_COMBO_MODULE_ERROR_UNSUPPORTED_COMMAND;
     }
 
-    if (handle == 0) {
+    if (handle == nullptr) {
         return BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT;
     }
 
@@ -291,7 +326,7 @@ ButtonComboModule_Error ButtonComboModule_GetButtonComboStatus(const ButtonCombo
         return BUTTON_COMBO_MODULE_ERROR_UNSUPPORTED_COMMAND;
     }
 
-    if (handle == 0 || outStatus == nullptr) {
+    if (handle == nullptr || outStatus == nullptr) {
         return BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT;
     }
 
@@ -300,7 +335,7 @@ ButtonComboModule_Error ButtonComboModule_GetButtonComboStatus(const ButtonCombo
 
 
 ButtonComboModule_Error ButtonComboModule_UpdateButtonComboMeta(const ButtonComboModule_ComboHandle handle,
-                                                                const ButtonComboModule_MetaOptions *options) {
+                                                                const ButtonComboModule_MetaOptions *metaOptions) {
     if (sButtonComboModuleVersion == BUTTON_COMBO_MODULE_API_VERSION_ERROR) {
         return BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED;
     }
@@ -308,15 +343,15 @@ ButtonComboModule_Error ButtonComboModule_UpdateButtonComboMeta(const ButtonComb
         return BUTTON_COMBO_MODULE_ERROR_UNSUPPORTED_COMMAND;
     }
 
-    if (handle == 0 || options == nullptr) {
+    if (handle == nullptr || metaOptions == nullptr) {
         return BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT;
     }
 
-    return sBCMUpdateButtonComboMeta(handle, options);
+    return sBCMUpdateButtonComboMeta(handle, metaOptions);
 }
 
 ButtonComboModule_Error ButtonComboModule_UpdateButtonComboCallback(const ButtonComboModule_ComboHandle handle,
-                                                                    const ButtonComboModule_CallbackOptions *options) {
+                                                                    const ButtonComboModule_CallbackOptions *callbackOptions) {
     if (sButtonComboModuleVersion == BUTTON_COMBO_MODULE_API_VERSION_ERROR) {
         return BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED;
     }
@@ -324,11 +359,11 @@ ButtonComboModule_Error ButtonComboModule_UpdateButtonComboCallback(const Button
         return BUTTON_COMBO_MODULE_ERROR_UNSUPPORTED_COMMAND;
     }
 
-    if (handle == 0 || options == nullptr) {
+    if (handle == nullptr || callbackOptions == nullptr) {
         return BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT;
     }
 
-    return sBCMUpdateButtonComboCallback(handle, options);
+    return sBCMUpdateButtonComboCallback(handle, callbackOptions);
 }
 
 ButtonComboModule_Error ButtonComboModule_UpdateControllerMask(const ButtonComboModule_ComboHandle handle,
@@ -341,12 +376,13 @@ ButtonComboModule_Error ButtonComboModule_UpdateControllerMask(const ButtonCombo
         return BUTTON_COMBO_MODULE_ERROR_UNSUPPORTED_COMMAND;
     }
 
-    if (handle == 0) {
+    if (handle == nullptr) {
         return BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT;
     }
 
     return sBCMUpdateControllerMask(handle, controllerMask, outStatus);
 }
+
 ButtonComboModule_Error ButtonComboModule_UpdateButtonCombo(const ButtonComboModule_ComboHandle handle,
                                                             const ButtonComboModule_Buttons combo,
                                                             ButtonComboModule_ComboStatus *outStatus) {
@@ -357,7 +393,7 @@ ButtonComboModule_Error ButtonComboModule_UpdateButtonCombo(const ButtonComboMod
         return BUTTON_COMBO_MODULE_ERROR_UNSUPPORTED_COMMAND;
     }
 
-    if (handle == 0) {
+    if (handle == nullptr) {
         return BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT;
     }
 
@@ -373,7 +409,7 @@ ButtonComboModule_Error ButtonComboModule_UpdateHoldDuration(const ButtonComboMo
         return BUTTON_COMBO_MODULE_ERROR_UNSUPPORTED_COMMAND;
     }
 
-    if (handle == 0) {
+    if (handle == nullptr) {
         return BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT;
     }
 
@@ -389,7 +425,7 @@ ButtonComboModule_Error ButtonComboModule_GetButtonComboMeta(const ButtonComboMo
         return BUTTON_COMBO_MODULE_ERROR_UNSUPPORTED_COMMAND;
     }
 
-    if (handle == 0 || outOptions == nullptr) {
+    if (handle == nullptr || outOptions == nullptr) {
         return BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT;
     }
 
@@ -405,7 +441,7 @@ ButtonComboModule_Error ButtonComboModule_GetButtonComboCallback(const ButtonCom
         return BUTTON_COMBO_MODULE_ERROR_UNSUPPORTED_COMMAND;
     }
 
-    if (handle == 0 || outOptions == nullptr) {
+    if (handle == nullptr || outOptions == nullptr) {
         return BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT;
     }
 
@@ -421,7 +457,7 @@ ButtonComboModule_Error ButtonComboModule_GetButtonComboInfoEx(const ButtonCombo
         return BUTTON_COMBO_MODULE_ERROR_UNSUPPORTED_COMMAND;
     }
 
-    if (handle == 0 || outOptions == nullptr) {
+    if (handle == nullptr || outOptions == nullptr) {
         return BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT;
     }
 
@@ -445,7 +481,7 @@ ButtonComboModule_Error ButtonComboModule_CheckComboAvailable(const ButtonComboM
 }
 
 ButtonComboModule_Error ButtonComboModule_DetectButtonCombo_Blocking(const ButtonComboModule_DetectButtonComboOptions *options,
-                                                                     ButtonComboModule_Buttons *outButtonCombo) {
+                                                                     ButtonComboModule_Buttons *outButtons) {
     if (sButtonComboModuleVersion == BUTTON_COMBO_MODULE_API_VERSION_ERROR) {
         return BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED;
     }
@@ -453,9 +489,9 @@ ButtonComboModule_Error ButtonComboModule_DetectButtonCombo_Blocking(const Butto
         return BUTTON_COMBO_MODULE_ERROR_UNSUPPORTED_COMMAND;
     }
 
-    if (options == nullptr || outButtonCombo == nullptr) {
+    if (options == nullptr || outButtons == nullptr) {
         return BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT;
     }
 
-    return sBCMDetectButtonComboBlocking(options, outButtonCombo);
+    return sBCMDetectButtonComboBlocking(options, outButtons);
 }
