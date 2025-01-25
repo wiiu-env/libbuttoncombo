@@ -6,12 +6,22 @@
 #include <stdexcept>
 
 namespace ButtonComboModule {
-    std::string_view GetStatusStr(const ButtonComboModule_Error status) {
+    const char *GetStatusStr(const ButtonComboModule_Error status) {
         return ButtonComboModule_GetStatusStr(status);
     }
 
-    std::string_view GetControllerTypeStr(const ButtonComboModule_ControllerTypes controller) {
+    const char *GetControllerTypeStr(const ButtonComboModule_ControllerTypes controller) {
         return ButtonComboModule_GetControllerTypeStr(controller);
+    }
+
+    const char *GetComboStatusStr(const ButtonComboModule_ComboStatus status) {
+        return ButtonComboModule_GetComboStatusStr(status);
+    }
+
+    std::optional<ButtonCombo> CreateComboEx(const ButtonComboModule_ComboOptions &options,
+                                             ButtonComboModule_ComboStatus &outStatus,
+                                             ButtonComboModule_Error &outError) noexcept {
+        return ButtonCombo::Create(options, outStatus, outError);
     }
 
     std::optional<ButtonCombo> CreateComboPressDownEx(const std::string_view label,
@@ -23,9 +33,10 @@ namespace ButtonComboModule {
                                                       ButtonComboModule_ComboStatus &outStatus,
                                                       ButtonComboModule_Error &outError) noexcept {
         ButtonComboModule_ComboOptions options               = {};
+        options.version                                      = BUTTON_COMBO_MODULE_COMBO_OPTIONS_VERSION;
         options.metaOptions.label                            = label.data();
         options.callbackOptions                              = {.callback = callback, .context = context};
-        options.buttonComboOptions.type                      = observer ? BUTTON_COMBO_MODULE_TYPE_PRESS_DOWN_OBSERVER : BUTTON_COMBO_MODULE_TYPE_PRESS_DOWN;
+        options.buttonComboOptions.type                      = observer ? BUTTON_COMBO_MODULE_COMBO_TYPE_PRESS_DOWN_OBSERVER : BUTTON_COMBO_MODULE_COMBO_TYPE_PRESS_DOWN;
         options.buttonComboOptions.basicCombo.combo          = combo;
         options.buttonComboOptions.basicCombo.controllerMask = controllerMask;
 
@@ -61,9 +72,10 @@ namespace ButtonComboModule {
                                                  ButtonComboModule_ComboStatus &outStatus,
                                                  ButtonComboModule_Error &outError) noexcept {
         ButtonComboModule_ComboOptions options               = {};
+        options.version                                      = BUTTON_COMBO_MODULE_COMBO_OPTIONS_VERSION;
         options.metaOptions.label                            = label.data();
         options.callbackOptions                              = {.callback = callback, .context = context};
-        options.buttonComboOptions.type                      = observer ? BUTTON_COMBO_MODULE_TYPE_HOLD_OBSERVER : BUTTON_COMBO_MODULE_TYPE_HOLD;
+        options.buttonComboOptions.type                      = observer ? BUTTON_COMBO_MODULE_COMBO_TYPE_HOLD_OBSERVER : BUTTON_COMBO_MODULE_COMBO_TYPE_HOLD;
         options.buttonComboOptions.basicCombo.combo          = combo;
         options.buttonComboOptions.basicCombo.controllerMask = controllerMask;
         options.buttonComboOptions.optionalHoldForXMs        = holdDurationInMs;
@@ -89,6 +101,11 @@ namespace ButtonComboModule {
                                                        ButtonComboModule_ComboStatus &outStatus,
                                                        ButtonComboModule_Error &outError) noexcept {
         return CreateComboHoldEx(label, BUTTON_COMBO_MODULE_CONTROLLER_ALL, combo, holdDurationInMs, callback, context, true, outStatus, outError);
+    }
+
+    ButtonCombo CreateComboEx(const ButtonComboModule_ComboOptions &options,
+                              ButtonComboModule_ComboStatus &outStatus) {
+        return ButtonCombo::Create(options, outStatus);
     }
 
     ButtonCombo CreateComboPressDownEx(const std::string_view label,
