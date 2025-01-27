@@ -126,7 +126,7 @@ ButtonComboModule_Error ButtonComboModule_AddButtonComboPressDownEx(const char *
                                                                     ButtonComboModule_ComboStatus *outStatus);
 /**
  * Wrapper for `ButtonComboModule_AddButtonComboPressDownEx` with
- * - `observer` set to "true"
+ * - `observer` set to "false"
  * - `controllerMask` set to "BUTTON_COMBO_MODULE_CONTROLLER_ALL"
  *
  * **Requires ButtonComboModule API version 1 or higher**
