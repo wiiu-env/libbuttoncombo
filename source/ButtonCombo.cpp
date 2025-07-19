@@ -34,7 +34,7 @@ namespace ButtonComboModule {
     void ButtonCombo::ReleaseButtonComboHandle() {
         if (mHandle != nullptr) {
             if (const auto res = ButtonComboModule_RemoveButtonCombo(mHandle); res != BUTTON_COMBO_MODULE_ERROR_SUCCESS) {
-                OSReport("ButtonCombo::ReleaseButtonComboHandle(): ButtonComboModule_RemoveButtonCombo for %08X returned: %s\n", mHandle, ButtonComboModule_GetStatusStr(res));
+                OSReport("ButtonCombo::ReleaseButtonComboHandle(): ButtonComboModule_RemoveButtonCombo for %p returned: %s\n", mHandle.handle, ButtonComboModule_GetStatusStr(res));
             }
             mHandle = ButtonComboModule_ComboHandle(nullptr);
         }
