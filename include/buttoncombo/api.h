@@ -1,3 +1,10 @@
+/**
+ * @file api.h
+ * @brief Main entry point for the libbuttoncombo library.
+ *
+ * This file contains the C and C++ APIs for interacting with the ButtonComboModule.
+ */
+
 #pragma once
 
 #include "defines.h"
@@ -7,115 +14,146 @@ extern "C" {
 #endif
 
 /**
- * This function returns a string representation of the provided ButtonComboModule_Error.
+ * @brief Returns a string representation of the provided ButtonComboModule_Error.
  *
- * @param status The status to get the string representation for.
- * @return A pointer to a string describing the provided status.
-**/
+ * @param status The status code to convert.
+ * @return A pointer to a string literal describing the provided status.
+ */
 const char *ButtonComboModule_GetStatusStr(ButtonComboModule_Error status);
 
 /**
- * This function returns a string representation of the provided ButtonComboModule_ControllerTypes.
+ * @brief Returns a string representation of the provided ButtonComboModule_ControllerTypes.
  *
- * @param controller The controller to get the string representation for.
- * @return A pointer to a string describing the provided controller.
-**/
+ * @param controller The controller mask to convert.
+ * @return A pointer to a string literal describing the provided controller type.
+ */
 const char *ButtonComboModule_GetControllerTypeStr(ButtonComboModule_ControllerTypes controller);
 
 /**
- * This function returns a string representation of the provided ButtonComboModule_ComboStatus.
+ * @brief Returns a string representation of the provided ButtonComboModule_ComboStatus.
  *
- * @param status The combo status to get the string representation for.
- * @return A pointer to a string describing the provided combo status.
-**/
+ * @param status The combo status to convert.
+ * @return A pointer to a string literal describing the provided combo status.
+ */
 const char *ButtonComboModule_GetComboStatusStr(ButtonComboModule_ComboStatus status);
 
 
 /**
- * This function has to be called before any other function of this lib (except ButtonComboModule_GetVersion) can be used.
+ * @brief Initializes the ButtonComboModule library.
  *
- * @return  BUTTON_COMBO_MODULE_ERROR_SUCCESS:                 The library has been initialized successfully. Other functions can now be used.<br>
- *          BUTTON_COMBO_MODULE_ERROR_MODULE_NOT_FOUND:        The module could not be found. Make sure the module is loaded.<br>
- *          BUTTON_COMBO_MODULE_ERROR_MODULE_MISSING_EXPORT:   The module is missing an expected export.<br>
- *          BUTTON_COMBO_MODULE_ERROR_UNSUPPORTED_API_VERSION: The version of the loaded module is not compatible with this version of the lib.
-**/
+ * This function must be called before any other function in this library (except ButtonComboModule_GetVersion).
+ * It locates the WUMS module and resolves the function pointers.
+ *
+ * @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS                 The library was initialized successfully.
+ * @retval BUTTON_COMBO_MODULE_ERROR_MODULE_NOT_FOUND        The ButtonComboModule.wms could not be found. Ensure it is running.
+ * @retval BUTTON_COMBO_MODULE_ERROR_MODULE_MISSING_EXPORT   The module is running but is missing expected exports.
+ * @retval BUTTON_COMBO_MODULE_ERROR_UNSUPPORTED_API_VERSION The loaded module version is incompatible with this client library.
+ */
 ButtonComboModule_Error ButtonComboModule_InitLibrary();
 
 /**
- * Deinitializes the ButtonComboModule lib
- * @return BUTTON_COMBO_MODULE_ERROR_SUCCESS or BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR
+ * @brief Deinitializes the ButtonComboModule library.
+ *
+ * @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS       Deinitialization was successful.
+ * @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR Deinitialization failed.
  */
 ButtonComboModule_Error ButtonComboModule_DeInitLibrary();
 
 /**
- * Retrieves the API Version of the loaded ButtonComboModule. <br>
- * <br>
- * Requires ButtonComboModule API version 1 or higher
- * @param outVersion pointer to the variable where the version will be stored.
+ * @brief Retrieves the API Version of the loaded ButtonComboModule.
  *
- * @return BUTTON_COMBO_MODULE_ERROR_SUCCESS:               The API version has been store in the version ptr.<br>
- *         BUTTON_COMBO_MODULE_ERROR_MODULE_NOT_FOUND:      The module could not be found. Make sure the module is loaded.<br>
- *         BUTTON_COMBO_MODULE_ERROR_MODULE_MISSING_EXPORT: The module is missing an expected export.<br>
- *         BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT:      Invalid version pointer.<br>
- *         BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR:         Retrieving the module version failed.
-**/
+ * **Requires ButtonComboModule API version 1 or higher.**
+ *
+ * @param[out] outVersion Pointer to storage for the version number. Must not be NULL.
+ *
+ * @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS                 The version was successfully stored in outVersion.
+ * @retval BUTTON_COMBO_MODULE_ERROR_MODULE_NOT_FOUND        The module could not be found.
+ * @retval BUTTON_COMBO_MODULE_ERROR_MODULE_MISSING_EXPORT   The module is missing the version export.
+ * @retval BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT        outVersion is NULL.
+ * @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR           An internal error occurred.
+ */
 ButtonComboModule_Error ButtonComboModule_GetVersion(ButtonComboModule_APIVersion *outVersion);
 
-
 /**
- * Creates a button combo which triggers a callback if this combo is detected.
+ * @brief Registers a new button combo with the ButtonComboModule.
  *
  * **Requires ButtonComboModule API version 1 or higher**
  *
- * This function takes a generic `ButtonComboModule_ComboOptions` which defines how the combo should be checked.
+ * This function registers a new combo based on the provided generic `ButtonComboModule_ComboOptions`.
+ * Depending on the options, the combo can detect simple presses or hold durations on specific controllers.
  *
- * Depending on the given type, the combo will either check for holding (for X ms) or pressing a button on for a given
- * controller mask. The type also defines if it's an "observer" or not. Observers won't check for combo conflicts.
+ * @section Conflict Handling
+ * The behavior regarding conflicts depends on the `type` set in the options:
  *
- * If the given type is not an `observer` and any other (valid) button combination overlaps with new combo, then the
- * `outStatus` will be set to `BUTTON_COMBO_MODULE_COMBO_STATUS_VALID` and the combo will be inactive. The original
- * ButtonCombo which had the combo first won't be affected at all.
- * In conflict state the callback will not be triggered even if the combination is pressed. If `observer` is set to
- * "true", the combo won't check for conflicts.
+ * - **Non-Observer (Standard):**
+ * The module validates if the new combo overlaps with any existing registered combos (e.g. registering "L+R" when "X+L+R" exists).
+ * - If a conflict is detected, the new combo is registered but `outStatus` is set to @ref BUTTON_COMBO_MODULE_COMBO_STATUS_CONFLICT.
+ * - In this state, the **callback will not trigger** even if the buttons are pressed.
+ * - The existing combo that caused the conflict remains valid and unaffected.
  *
- * To resolve a BUTTON_COMBO_MODULE_COMBO_STATUS_VALID combo state you **always** have to update combo information
- * via @ButtonComboModule_UpdateControllerMask or @ButtonComboModule_UpdateButtonCombo. The state won't update itself,
- * even it the combo has no conflicts in a later point in time (e.g. due to other conflicting combos being removed in the meantime)
+ * - **Observer:**
+ * The module does **not** check for conflicts. The callback will trigger regardless of other existing combos.
  *
- * Conflict example (only relevant if combo type is not an observer):
+ * @par Conflict example (only relevant if combo type is not an observer):
  * It's not possible to add any new valid button combo containing "L+R" (e.g. "X+L+R"), if there already is a button
  * combination "L+R". Furthermore, it's also not possible to add a "L" or "R" combo if there already is a button
  * combination "L+R".
  *
- * See @ButtonComboModule_RemoveButtonCombo to remove an added button combo.
+ * @section Resolving Conflicts
+ * If a combo enters the @ref BUTTON_COMBO_MODULE_COMBO_STATUS_CONFLICT state, it remains inactive until manually updated.
  *
- * @param options options of this button combo
- * @param outHandle The handle of the button combo will be stored here on success.  Must not be nullptr.
- * @param outStatus (optional) The status of the combo will be stored here. Only if the status is BUTTON_COMBO_MODULE_COMBO_STATUS_VALID the combo is valid. Can be NULL.
- * @return Returns BUTTON_COMBO_MODULE_ERROR_SUCCESS on success. Please check the outStatus as well.
-*/
+ * To resolve this (even after the conflicting combo is removed), you **must** manually update the combo using:
+ * - @ref ButtonComboModule_UpdateControllerMask or
+ * - @ref ButtonComboModule_UpdateButtonCombo
+ *
+ * **Note:** The status does *not* automatically update to `VALID` just because the conflicting combo was removed.
+ * You must trigger one of the update functions above to force a re-evaluation.
+ *
+ * @sa ButtonComboModule_RemoveButtonCombo to remove an added button combo.
+ *
+ * @param[in]  options   Configuration for the new combo. Must not be NULL.
+ * @param[out] outHandle Storage for the new combo's handle. Must not be NULL.
+ * @param[out] outStatus (Optional) Storage for the initial status. If provided, it will be set to
+ * @ref BUTTON_COMBO_MODULE_COMBO_STATUS_VALID if active, or
+ * @ref BUTTON_COMBO_MODULE_COMBO_STATUS_CONFLICT if inactive due to overlap.
+ *
+ * @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS                       Combo successfully created. Check outStatus for validity.
+ * @retval BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT              options or outHandle is NULL, or the callback in options is NULL.
+ * @retval BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED             The library is not initialized.
+ * @retval BUTTON_COMBO_MODULE_ERROR_INCOMPATIBLE_OPTIONS_VERSION  The options struct version is incorrect.
+ * @retval BUTTON_COMBO_MODULE_ERROR_INVALID_COMBO                 The button combination or controller mask in options is empty/0.
+ * @retval BUTTON_COMBO_MODULE_ERROR_DURATION_MISSING              The type is HOLD but holdDuration is 0.
+ * @retval BUTTON_COMBO_MODULE_ERROR_INVALID_COMBO_TYPE            The combo type in options is unknown.
+ * @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR                 The module is in an invalid state.
+ */
 ButtonComboModule_Error ButtonComboModule_AddButtonCombo(const ButtonComboModule_ComboOptions *options,
                                                          ButtonComboModule_ComboHandle *outHandle,
                                                          ButtonComboModule_ComboStatus *outStatus);
 
 /**
- * Creates a "PressDown" button combo which triggers a callback when given combo for a given controller has been pressed
+ * @brief Helper to create a "PressDown" combo with extended options.
  *
- * **Requires ButtonComboModule API version 1 or higher**
+ * **Requires ButtonComboModule API version 1 or higher.**
  *
- * See @ButtonComboModule_AddButtonCombo for detailed information about button combos.
- * See @ButtonComboModule_RemoveButtonCombo to remove the added button combo.
+ * A "PressDown" combo triggers immediately when the buttons are pressed.
  *
- * @param label label of the button combo
- * @param controllerMask Mask of controllers which should be checked. Must not be empty.
- * @param combo Combo which should be checked. Must not be empty
- * @param callback Callback that will be called if a button combo is detected. Must not be nullptr.
- * @param context Context for the callback. Can be nullptr.
- * @param observer Defines if this combo should check for conflicts. Set it to "true" to be an observer and ignore conflicts.
- * @param outHandle The handle of the button combo will be stored here on success.  Must not be nullptr.
- * @param outStatus (optional) The status of the combo will be stored here. Only if the status is BUTTON_COMBO_MODULE_COMBO_STATUS_VALID the combo is valid. Can be NULL.
- * @return Returns BUTTON_COMBO_MODULE_ERROR_SUCCESS on success. Please check the outStatus as well.
-*/
+ * @sa ButtonComboModule_AddButtonCombo for detailed information about button combos.
+ *
+ * @param[in]  label          A string label for debugging.
+ * @param[in]  controllerMask Bitmask of controllers to listen to. Must not be empty.
+ * @param[in]  combo          Bitmask of buttons to detect. Must not be empty.
+ * @param[in]  callback       Function to call when detected. Must not be NULL.
+ * @param[in]  context        User data passed to the callback. Can be NULL.
+ * @param[in]  observer       If true, ignores conflicts with other combos.
+ * @param[out] outHandle      Storage for the new handle. Must not be NULL.
+ * @param[out] outStatus      (Optional) Storage for the initial status.
+ *
+ * @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS           Combo successfully created.
+ * @retval BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT  Pointers are NULL or masks/combos are empty.
+ * @retval BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED The library is not initialized.
+ * @retval BUTTON_COMBO_MODULE_ERROR_INVALID_COMBO     The combo or controller mask is 0.
+ * @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR     Internal module error.
+ */
 ButtonComboModule_Error ButtonComboModule_AddButtonComboPressDownEx(const char *label,
                                                                     ButtonComboModule_ControllerTypes controllerMask,
                                                                     ButtonComboModule_Buttons combo,
@@ -125,14 +163,16 @@ ButtonComboModule_Error ButtonComboModule_AddButtonComboPressDownEx(const char *
                                                                     ButtonComboModule_ComboHandle *outHandle,
                                                                     ButtonComboModule_ComboStatus *outStatus);
 /**
- * Wrapper for `ButtonComboModule_AddButtonComboPressDownEx` with
- * - `observer` set to "false"
- * - `controllerMask` set to "BUTTON_COMBO_MODULE_CONTROLLER_ALL"
+ * @brief Helper to create a "PressDown" combo on ALL controllers (Conflict Checked).
  *
- * **Requires ButtonComboModule API version 1 or higher**
+ * **Requires ButtonComboModule API version 1 or higher.**
  *
- * See: @ButtonComboModule_AddButtonComboPressDownEx for more information.
-*/
+ * Equivalent to calling `ButtonComboModule_AddButtonComboPressDownEx` with:
+ * - `controllerMask` = `BUTTON_COMBO_MODULE_CONTROLLER_ALL`
+ * - `observer` = `false`
+ *
+ * @see ButtonComboModule_AddButtonComboPressDownEx
+ */
 ButtonComboModule_Error ButtonComboModule_AddButtonComboPressDown(const char *label,
                                                                   ButtonComboModule_Buttons combo,
                                                                   ButtonComboModule_ComboCallback callback,
@@ -141,14 +181,16 @@ ButtonComboModule_Error ButtonComboModule_AddButtonComboPressDown(const char *la
                                                                   ButtonComboModule_ComboStatus *outStatus);
 
 /**
-  * Wrapper for `ButtonComboModule_AddButtonComboPressDownEx` with
-  * - `observer` set to "true"
-  * - `controllerMask` set to "BUTTON_COMBO_MODULE_CONTROLLER_ALL"
+  * @brief Helper to create a "PressDown" combo on ALL controllers (Observer).
   *
-  * **Requires ButtonComboModule API version 1 or higher**
+  * **Requires ButtonComboModule API version 1 or higher.**
   *
-  * See: @ButtonComboModule_AddButtonComboPressDownEx for more information.
- */
+  * Equivalent to calling `ButtonComboModule_AddButtonComboPressDownEx` with:
+  * - `controllerMask` = `BUTTON_COMBO_MODULE_CONTROLLER_ALL`
+  * - `observer` = `true`
+  *
+  * @see ButtonComboModule_AddButtonComboPressDownEx
+  */
 ButtonComboModule_Error ButtonComboModule_AddButtonComboPressDownObserver(const char *label,
                                                                           ButtonComboModule_Buttons combo,
                                                                           ButtonComboModule_ComboCallback callback,
@@ -158,24 +200,31 @@ ButtonComboModule_Error ButtonComboModule_AddButtonComboPressDownObserver(const 
 
 
 /**
-  * Creates a "Hold" button combo which triggers a callback when given combo for a given controller has been hold for X ms
+  * @brief Helper to create a "Hold" combo with extended options.
   *
-  * **Requires ButtonComboModule API version 1 or higher**
+  * **Requires ButtonComboModule API version 1 or higher.**
   *
-  * See @ButtonComboModule_AddButtonCombo for detailed information about button combos.
-  * See @ButtonComboModule_RemoveButtonCombo to remove the added button combo.
+  * A "Hold" combo triggers only after the buttons have been held for `holdDurationInMs`.
   *
-  * @param label label of the button combo
-  * @param controllerMask Mask of controllers which should be checked. Must not be empty.
-  * @param combo Combo which should be checked. Must not be empty
-  * @param holdDurationInMs Defines how long the button combination need to be hold down. Must not be 0.
-  * @param callback Callback that will be called if a button combo is detected. Must not be nullptr.
-  * @param context Context for the callback. Can be nullptr.
-  * @param observer Defines if this combo should check for conflicts. Set it to "true" to be an observer and ignore conflicts.
-  * @param outHandle The handle of the button combo will be stored here on success.  Must not be nullptr.
-  * @param outStatus (optional) The status of the combo will be stored here. Only if the status is BUTTON_COMBO_MODULE_COMBO_STATUS_VALID the combo is valid. Can be NULL.
-  * @return Returns BUTTON_COMBO_MODULE_ERROR_SUCCESS on success. Please check the outStatus as well.
- */
+  * @sa ButtonComboModule_AddButtonCombo for detailed information about button combos.
+  *
+  * @param[in]  label             A string label for debugging.
+  * @param[in]  controllerMask    Bitmask of controllers to listen to. Must not be empty.
+  * @param[in]  combo             Bitmask of buttons to detect. Must not be empty.
+  * @param[in]  holdDurationInMs  Duration in milliseconds the buttons must be held. Must be > 0.
+  * @param[in]  callback          Function to call when detected. Must not be NULL.
+  * @param[in]  context           User data passed to the callback. Can be NULL.
+  * @param[in]  observer          If true, ignores conflicts with other combos.
+  * @param[out] outHandle         Storage for the new handle. Must not be NULL.
+  * @param[out] outStatus         (Optional) Storage for the initial status.
+  *
+  * @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS             Combo successfully created.
+  * @retval BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT    Pointers are NULL.
+  * @retval BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED   The library is not initialized.
+  * @retval BUTTON_COMBO_MODULE_ERROR_INVALID_COMBO       The combo or controller mask is 0.
+  * @retval BUTTON_COMBO_MODULE_ERROR_DURATION_MISSING    holdDurationInMs is 0.
+  * @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR       Internal module error.
+  */
 ButtonComboModule_Error ButtonComboModule_AddButtonComboHoldEx(const char *label,
                                                                ButtonComboModule_ControllerTypes controllerMask,
                                                                ButtonComboModule_Buttons combo,
@@ -187,14 +236,16 @@ ButtonComboModule_Error ButtonComboModule_AddButtonComboHoldEx(const char *label
                                                                ButtonComboModule_ComboStatus *outStatus);
 
 /**
- * Wrapper for `ButtonComboModule_AddButtonComboHoldEx` with
- * - `observer` set to "false"
- * - `controllerMask` set to "BUTTON_COMBO_MODULE_CONTROLLER_ALL"
+ * @brief Helper to create a "Hold" combo on ALL controllers (Conflict Checked).
  *
- * **Requires ButtonComboModule API version 1 or higher**
+ * **Requires ButtonComboModule API version 1 or higher.**
  *
- * See: @ButtonComboModule_AddButtonComboHoldEx for more information.
-*/
+ * Equivalent to calling `ButtonComboModule_AddButtonComboHoldEx` with:
+ * - `controllerMask` = `BUTTON_COMBO_MODULE_CONTROLLER_ALL`
+ * - `observer` = `false`
+ *
+ * @see ButtonComboModule_AddButtonComboHoldEx
+ */
 ButtonComboModule_Error ButtonComboModule_AddButtonComboHold(const char *label,
                                                              ButtonComboModule_Buttons combo,
                                                              uint32_t holdDurationInMs,
@@ -204,14 +255,16 @@ ButtonComboModule_Error ButtonComboModule_AddButtonComboHold(const char *label,
                                                              ButtonComboModule_ComboStatus *outStatus);
 
 /**
- * Wrapper for `ButtonComboModule_AddButtonComboHoldEx` with
- * - `observer` set to "true"
- * - `controllerMask` set to "BUTTON_COMBO_MODULE_CONTROLLER_ALL"
+ * @brief Helper to create a "Hold" combo on ALL controllers (Observer).
  *
- * **Requires ButtonComboModule API version 1 or higher**
+ * **Requires ButtonComboModule API version 1 or higher.**
  *
- * See: @ButtonComboModule_AddButtonComboHoldEx for more information.
-*/
+ * Equivalent to calling `ButtonComboModule_AddButtonComboHoldEx` with:
+ * - `controllerMask` = `BUTTON_COMBO_MODULE_CONTROLLER_ALL`
+ * - `observer` = `true`
+ *
+ * @see ButtonComboModule_AddButtonComboHoldEx
+ */
 ButtonComboModule_Error ButtonComboModule_AddButtonComboHoldObserver(const char *label,
                                                                      ButtonComboModule_Buttons combo,
                                                                      uint32_t holdDurationInMs,
@@ -221,168 +274,212 @@ ButtonComboModule_Error ButtonComboModule_AddButtonComboHoldObserver(const char 
                                                                      ButtonComboModule_ComboStatus *outStatus);
 
 /**
-* Removes a button combo for the given handle.
+* @brief Removes a previously registered button combo.
 *
-* **Requires ButtonComboModule API version 1 or higher**
+* **Requires ButtonComboModule API version 1 or higher.**
 *
-* @param handle handle of the button combo that should be removed.
-* @return Returns BUTTON_COMBO_MODULE_ERROR_SUCCESS on success.
+* This function allows removing a combo using its handle. If the handle is not found,
+* the function still returns SUCCESS (idempotent).
+*
+* @param[in] handle The handle of the combo to remove. Must not be NULL.
+*
+* @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS            The combo was removed or was not found.
+* @retval BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT   The handle was NULL.
+* @retval BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED  The library is not initialized.
+* @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR      Internal module error.
 */
 ButtonComboModule_Error ButtonComboModule_RemoveButtonCombo(ButtonComboModule_ComboHandle handle);
 
 /**
- * Gets a button combo status for the given handle.
+ * @brief Retrieves the current status of a combo.
  *
- * **Requires ButtonComboModule API version 1 or higher**
+ * **Requires ButtonComboModule API version 1 or higher.**
  *
- * @param handle Handle of the button combo
- * @param outStatus The status of the combo will be stored here.
- * @return Returns BUTTON_COMBO_MODULE_ERROR_SUCCESS on success.
+ * @param[in]  handle    The handle of the combo. Must not be NULL.
+ * @param[out] outStatus Storage for the status. Must not be NULL.
+ *
+ * @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS            Status retrieved successfully.
+ * @retval BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT   handle or outStatus is NULL, or **handle not found**.
+ * @retval BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED  The library is not initialized.
+ * @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR      Internal module error.
  */
 ButtonComboModule_Error ButtonComboModule_GetButtonComboStatus(ButtonComboModule_ComboHandle handle,
                                                                ButtonComboModule_ComboStatus *outStatus);
 
 /**
-* Updates the meta options for the given handle
+* @brief Updates the metadata (label) for a specific combo.
 *
-* **Requires ButtonComboModule API version 1 or higher**
+* **Requires ButtonComboModule API version 1 or higher.**
 *
-* @param handle Handle of the button
-* @param metaOptions new meta options
-* @return Returns BUTTON_COMBO_MODULE_ERROR_SUCCESS on success.
+* @param[in] handle      The handle of the combo. Must not be NULL.
+* @param[in] metaOptions The new metadata. Must not be NULL.
+*
+* @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS            Metadata updated.
+* @retval BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT   handle or metaOptions is NULL, or **handle not found**.
+* @retval BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED  The library is not initialized.
+* @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR      Internal module error.
 */
 ButtonComboModule_Error ButtonComboModule_UpdateButtonComboMeta(ButtonComboModule_ComboHandle handle,
                                                                 const ButtonComboModule_MetaOptions *metaOptions);
 
 /**
-* Updates the callback and context for the given handle
+* @brief Updates the callback function and context for a combo.
 *
-* **Requires ButtonComboModule API version 1 or higher**
+* **Requires ButtonComboModule API version 1 or higher.**
 *
-* @param handle Handle of the button combo
-* @param callbackOptions new callback options
-* @return Returns BUTTON_COMBO_MODULE_ERROR_SUCCESS on success.
+* @param[in] handle          The handle of the combo. Must not be NULL.
+* @param[in] callbackOptions The new callback and context. Must not be NULL.
+*
+* @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS            Callback options updated.
+* @retval BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT   handle or callbackOptions is NULL, or **handle not found**.
+* @retval BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED  The library is not initialized.
+* @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR      Internal module error.
 */
 ButtonComboModule_Error ButtonComboModule_UpdateButtonComboCallback(ButtonComboModule_ComboHandle handle,
                                                                     const ButtonComboModule_CallbackOptions *callbackOptions);
 
 /**
-* Updates the controller mask for the given handle
+* @brief Updates the controller mask for a combo.
 *
-* **Requires ButtonComboModule API version 1 or higher**
+* **Requires ButtonComboModule API version 1 or higher.**
 *
-* This will also re-check for conflicts and updates the combo status
+* Changing the mask triggers a re-check for conflicts. `outStatus` will reflect
+* whether the combo is now valid or conflicting.
 *
-* @param handle Handle of the button combo
-* @param controllerMask new controller mask. must not be empty
-* @param outStatus the new combo status after setting the mask will be written here.
-* @return Returns BUTTON_COMBO_MODULE_ERROR_SUCCESS on success.
+* @param[in]  handle         The handle of the combo. Must not be NULL.
+* @param[in]  controllerMask The new controller mask. Must not be empty.
+* @param[out] outStatus      (Optional) Storage for the new status.
+*
+* @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS            Mask updated (check outStatus for Validity).
+* @retval BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT   handle is NULL or **handle not found**.
+* @retval BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED  The library is not initialized.
+* @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR      Internal module error.
 */
 ButtonComboModule_Error ButtonComboModule_UpdateControllerMask(ButtonComboModule_ComboHandle handle,
                                                                ButtonComboModule_ControllerTypes controllerMask,
                                                                ButtonComboModule_ComboStatus *outStatus);
 
 /**
-* Updates the combo for the given handle
+* @brief Updates the button combination for a combo.
 *
-* **Requires ButtonComboModule API version 1 or higher**
+* **Requires ButtonComboModule API version 1 or higher.**
 *
-* This will also re-check for conflicts and updates the combo status
+* Changing the buttons triggers a re-check for conflicts.
 *
-* @param handle Handle of the button combo
-* @param combo new combo. must not be empty.
-* @param outStatus the new combo status after setting the mask will be written here.
-* @return Returns BUTTON_COMBO_MODULE_ERROR_SUCCESS on success.
+* @param[in]  handle    The handle of the combo. Must not be NULL.
+* @param[in]  combo     The new button bitmask. Must not be empty.
+* @param[out] outStatus (Optional) Storage for the new status.
+*
+* @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS            Buttons updated (check outStatus for Validity).
+* @retval BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT   handle is NULL or **handle not found**.
+* @retval BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED  The library is not initialized.
+* @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR      Internal module error.
 */
 ButtonComboModule_Error ButtonComboModule_UpdateButtonCombo(ButtonComboModule_ComboHandle handle,
                                                             ButtonComboModule_Buttons combo,
                                                             ButtonComboModule_ComboStatus *outStatus);
 
 /**
-* Updates hold duration for a given handle
+* @brief Updates the hold duration for a "Hold" combo.
 *
-* **Requires ButtonComboModule API version 1 or higher**
+* **Requires ButtonComboModule API version 1 or higher.**
 *
-* This only possible to "Hold"-button combos.
+* This is only valid for combos created as `HOLD` or `HOLD_OBSERVER`.
 *
-* @param handle Handle of the button combo
-* @param holdDurationInMs the new hold duration in milliseconds
-* @return Returns BUTTON_COMBO_MODULE_ERROR_SUCCESS on success.
+* @param[in] handle           The handle of the combo. Must not be NULL.
+* @param[in] holdDurationInMs The new duration in milliseconds. Must be > 0.
+*
+* @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS            Duration updated.
+* @retval BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT   handle is NULL or **handle not found**.
+* @retval BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED  The library is not initialized.
+* @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR      Internal module error.
 */
 ButtonComboModule_Error ButtonComboModule_UpdateHoldDuration(ButtonComboModule_ComboHandle handle,
                                                              uint32_t holdDurationInMs);
 
 /**
-* Returns the current metadata for the given handle
+* @brief Retrieves the metadata (label) for a specific combo.
 *
-* @param handle Handle of the button combo
-* @param outOptions struct where the result will be written to. Must not be nullptr.
-* @return Returns BUTTON_COMBO_MODULE_ERROR_SUCCESS on success.
+* @param[in]  handle     The handle of the combo. Must not be NULL.
+* @param[out] outOptions Storage for the metadata. Must not be NULL.
+*
+* @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS            Metadata retrieved.
+* @retval BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT   handle/outOptions is NULL or **handle not found**.
+* @retval BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED  The library is not initialized.
+* @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR      Internal module error.
 */
 ButtonComboModule_Error ButtonComboModule_GetButtonComboMeta(ButtonComboModule_ComboHandle handle,
                                                              ButtonComboModule_MetaOptionsOut *outOptions);
 
 /**
-* Returns the current callback and context for the given handle
+* @brief Retrieves the callback options for a specific combo.
 *
-* **Requires ButtonComboModule API version 1 or higher**
+* **Requires ButtonComboModule API version 1 or higher.**
 *
-* @param handle Handle of the button combo
-* @param outOptions struct where the result will be written to. Must not be nullptr.
-* @return Returns BUTTON_COMBO_MODULE_ERROR_SUCCESS on success.
+* @param[in]  handle     The handle of the combo. Must not be NULL.
+* @param[out] outOptions Storage for the callback options. Must not be NULL.
+*
+* @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS            Callback options retrieved.
+* @retval BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT   handle/outOptions is NULL or **handle not found**.
+* @retval BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED  The library is not initialized.
+* @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR      Internal module error.
 */
 ButtonComboModule_Error ButtonComboModule_GetButtonComboCallback(ButtonComboModule_ComboHandle handle,
                                                                  ButtonComboModule_CallbackOptions *outOptions);
 
 /**
-* Returns the information about the controller mask and combo for the given handle
+* @brief Retrieves detailed info (type, mask, buttons, duration) for a specific combo.
 *
-* **Requires ButtonComboModule API version 1 or higher**
+* **Requires ButtonComboModule API version 1 or higher.**
 *
-* @param handle Handle of the button combo
-* @param outOptions struct where the result will be written to. Must not be nullptr.
-* @return Returns BUTTON_COMBO_MODULE_ERROR_SUCCESS on success.
+* @param[in]  handle     The handle of the combo. Must not be NULL.
+* @param[out] outOptions Storage for the detailed info. Must not be NULL.
+*
+* @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS            Info retrieved.
+* @retval BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT   handle/outOptions is NULL or **handle not found**.
+* @retval BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED  The library is not initialized.
+* @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR      Internal module error.
 */
 ButtonComboModule_Error ButtonComboModule_GetButtonComboInfoEx(ButtonComboModule_ComboHandle handle,
                                                                ButtonComboModule_ButtonComboInfoEx *outOptions);
 
 /**
-* Helper function to check the combo status for a given button combo option struct.
+* @brief Checks if a proposed combo would cause a conflict.
 *
-* **Requires ButtonComboModule API version 1 or higher**
+* **Requires ButtonComboModule API version 1 or higher.**
 *
-* This can be used to check if a certain button combination is still "free" and won't cause any conflicts.
+* This does not register the combo, it only checks if `outStatus` would be VALID or CONFLICT.
 *
-* The input for this function is a "ButtonComboModule_ButtonComboOptions" struct ptr. Fill in the values like this:
-* `controllerMask` - Mask of which controllers would be checked for the button combo.
-* `combo` - The button combo that should be checked.
+* @param[in]  options   The proposed combo options (mask and buttons). Must not be NULL.
+* @param[out] outStatus Storage for the resulting status. Must not be NULL.
 *
-* @param options Holds information about how the button combo should be detected.
-* @param outStatus On success this will store the status of provided combo options.
-* @return Returns "BUTTON_COMBO_MODULE_ERROR_SUCCESS" on success
-**/
+* @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS            Check completed successfully.
+* @retval BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT   options or outStatus is NULL.
+* @retval BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED  The library is not initialized.
+* @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR      Internal module error.
+*/
 ButtonComboModule_Error ButtonComboModule_CheckComboAvailable(const ButtonComboModule_ButtonComboOptions *options,
                                                               ButtonComboModule_ComboStatus *outStatus);
 
 /**
-* Helper function to detect a pressed button combo.
+* @brief Blocks execution until a specific combo (or abort combo) is detected.
 *
-* **Requires ButtonComboModule API version 1 or higher**
+* **Requires ButtonComboModule API version 1 or higher.**
 *
-* This function is blocking the current thread until it return, call it in an appropriate place.
+* @warning **This function blocks the calling thread** until the combo is detected or aborted.
+* Do not call this from the main UI thread (e.g., inside a ProcUI loop) or the application will freeze.
 *
-* The input for this function is a "ButtonComboModule_DetectButtonComboOptions" struct ptr. Fill in the values like this:
-* `controllerMask` - Mask of which controller should be checked for a button combo. Must not be empty
-* `holdComboForInMs` - Defines how many ms a combo needs to be hold to be detected as a combo
-* `holdAbortForInMs` - Defines how many ms the abort combo needs to be hold so the detection will be aborted.
-* `abortButtonCombo` - Defines the combo that will trigger an abort.
+* @param[in]  options    Configuration for detection (mask, durations, abort buttons). Must not be NULL.
+* @param[out] outButtons Storage for the detected buttons. Must not be NULL.
 *
-* The abort button combo is checked on all controller, if they are not part of the `controllerMask`
+* @note The abort button combo is checked on all controllers, even those not included in the `controllerMask`.
 *
-* @param options Holds information about how the button combo should be detected.
-* @param outButtons The detected button combo will be stored here if the functions returns BUTTON_COMBO_MODULE_ERROR_SUCCESS.
-* @return Returns "BUTTON_COMBO_MODULE_ERROR_SUCCESS" on success, and "BUTTON_COMBO_MODULE_ERROR_ABORTED" if the detection was aborted.
-**/
+* @retval BUTTON_COMBO_MODULE_ERROR_SUCCESS            The target combo was detected.
+* @retval BUTTON_COMBO_MODULE_ERROR_ABORTED            The abort combo was pressed.
+* @retval BUTTON_COMBO_MODULE_ERROR_INVALID_ARGUMENT   options/outButtons is NULL, or options contain invalid values (e.g. 0 duration, empty mask).
+* @retval BUTTON_COMBO_MODULE_ERROR_LIB_UNINITIALIZED  The library is not initialized.
+* @retval BUTTON_COMBO_MODULE_ERROR_UNKNOWN_ERROR      Internal module error.
+*/
 ButtonComboModule_Error ButtonComboModule_DetectButtonCombo_Blocking(const ButtonComboModule_DetectButtonComboOptions *options,
                                                                      ButtonComboModule_Buttons *outButtons);
 
@@ -394,80 +491,66 @@ ButtonComboModule_Error ButtonComboModule_DetectButtonCombo_Blocking(const Butto
 
 #include <buttoncombo/ButtonCombo.h>
 #include <optional>
+#include <stdexcept>
 #include <string_view>
 
+/**
+ * @namespace ButtonComboModule
+ * @brief C++ RAII wrapper API.
+ *
+ * This namespace provides a safer, object-oriented interface for the ButtonComboModule.
+ * Most functions here are wrappers around the C API, returning `std::optional` or throwing exceptions
+ * instead of returning raw error codes.
+ */
 namespace ButtonComboModule {
     /**
-     * Wrapper for @ButtonComboModule_GetStatusStr
-    **/
+     * @brief Wrapper for @ref ButtonComboModule_GetStatusStr.
+     */
     const char *GetStatusStr(ButtonComboModule_Error status);
 
     /**
-     * Wrapper for @ButtonComboModule_GetControllerTypeStr
-    **/
+     * @brief Wrapper for @ref ButtonComboModule_GetControllerTypeStr.
+     */
     const char *GetControllerTypeStr(ButtonComboModule_ControllerTypes controller);
 
     /**
-     * Wrapper for @ButtonComboModule_GetComboStatusStr
-    **/
+     * @brief Wrapper for @ref ButtonComboModule_GetComboStatusStr.
+     */
     const char *GetComboStatusStr(ButtonComboModule_ComboStatus status);
 
     /**
-     * Creates a button combo which triggers a callback if this combo is detected.
+     * @brief Creates a button combo (Generic).
      *
-     * This function takes a generic `ButtonComboModule_ComboOptions` which defines how the combo should be checked.
+     * @details This is the core C++ factory function. It validates the input and registers the combo.
+     * Refer to @ref ButtonComboModule_AddButtonCombo for detailed behavior of specific options.
      *
-     * Depending on the given type, the combo will either check for holding (for X ms) or pressing a button on for a given
-     * controller mask. The type also defines if it's an "observer" or not. Observers won't check for combo conflicts.
-     *
-     * If the given type is not an `observer` and any other (valid) button combination overlaps with new combo, then the
-     * `outStatus` will be set to `BUTTON_COMBO_MODULE_COMBO_STATUS_CONFLICT` and the combo will be inactive. The original
-     * ButtonCombo which had the combo first won't be affected at all.
-     * In conflict state the callback will not be triggered even if the combination is pressed. If `observer` is set to
-     * "true", the combo won't check for conflicts.
-     *
-     * To resolve a BUTTON_COMBO_MODULE_COMBO_STATUS_CONFLICT combo state you **always** have to update combo information
-     * via @ButtonCombo::UpdateControllerMask or @ButtonCombo::UpdateButtonCombo. The state won't update itself,
-     * even it the combo has no conflicts in a later point in time (e.g. due to other conflicting combos being removed in the meantime)
-     *
-     * Conflict example (only relevant if combo type is not an observer):
-     * It's not possible to add any new valid button combo containing "L+R" (e.g. "X+L+R"), if there already is a button
-     * combination "L+R". Furthermore, it's also not possible to add a "L" or "R" combo if there already is a button
-     * combination "L+R".
-     *
-     * @param options options of this button combo
-     * @param outStatus (optional) The status of the combo will be stored here. Only if the status is BUTTON_COMBO_MODULE_COMBO_STATUS_VALID the combo is valid.
-     * @param outError The error of this operation will be stored here. Only if the error is BUTTON_COMBO_MODULE_ERROR_SUCCESS creating the combo was successful.
-     * @return An optional `ButtonCombo` object if the combo registration succeeds; otherwise, an empty optional.
-    */
+     * @param options    Configuration options (see @ref ButtonComboModule_ComboOptions).
+     * @param[out] outStatus  Resulting status (VALID or CONFLICT).
+     * @param[out] outError   Resulting error code.
+     * @return A `ButtonCombo` object on success, or `std::nullopt` on failure.
+     * @sa ButtonComboModule_AddButtonCombo
+     */
     std::optional<ButtonCombo> CreateComboEx(const ButtonComboModule_ComboOptions &options,
                                              ButtonComboModule_ComboStatus &outStatus,
                                              ButtonComboModule_Error &outError) noexcept;
 
     /**
-     * Creates a button combo which triggers a callback if this combo is detected.
+     * @brief Creates a "Press Down" combo.
      *
-     * This function creates a "PressDown"-combo. This means the callback is triggered once the combo is pressed down
-     * on one of the provided controllers. The provided controller mask can be a combination of any
-     * `ButtonComboModule_ControllerTypes` values.
+     * @details Triggers immediately when buttons are pressed.
+     * Refer to @ref ButtonComboModule_AddButtonComboPressDownEx for parameter details.
      *
-     * The "observer" parameter defines if this button combo should check for conflicts with other button combos.
-     *
-     * See @CreateComboEx for more information.
-     *
-     * The returned objected will automatically remove the button combo in the destructor. Make sure to keep it around
-     * along as the button combo should be valid! You have to use `std::move` to move it around.
-     *
-     * @param label Label of this button combo
-     * @param controllerMask Mask of controllers which should be checked. Must not be empty.
-     * @param combo Combination which should be checked. Must not be empty.
-     * @param callback Callback that will be called if a button combo is detected. Must not be nullptr.
-     * @param context Context for the callback. Can be nullptr.
-     * @param observer Defines if this combo should check for conflicts. Set to "true" to be an observer and ignore conflicts.
-     * @param outStatus The status of the combo will be stored here. Only if the status is BUTTON_COMBO_MODULE_COMBO_STATUS_VALID the combo is valid.
-     * @param outError The error of this operation will be stored here. Only if the error is BUTTON_COMBO_MODULE_ERROR_SUCCESS creating the combo was successful.
-     * @return An optional `ButtonCombo` object if the combo registration succeeds; otherwise, an empty optional.
-    */
+     * @param label          Debug label.
+     * @param controllerMask Controllers to listen to.
+     * @param combo          Button bitmask.
+     * @param callback       Function to call on trigger.
+     * @param context        User data for callback.
+     * @param observer       If true, ignore conflicts.
+     * @param[out] outStatus Resulting status.
+     * @param[out] outError  Resulting error code.
+     * @return A `ButtonCombo` object on success, or `std::nullopt` on failure.
+     * @sa ButtonComboModule_AddButtonComboPressDownEx
+     */
     std::optional<ButtonCombo> CreateComboPressDownEx(std::string_view label,
                                                       ButtonComboModule_ControllerTypes controllerMask,
                                                       ButtonComboModule_Buttons combo,
@@ -478,14 +561,11 @@ namespace ButtonComboModule {
                                                       ButtonComboModule_Error &outError) noexcept;
 
     /**
-     * Wrapper for `CreateComboPressDownEx` with `observer` set to "false" and `controllerMask` set to
-     * "BUTTON_COMBO_MODULE_CONTROLLER_ALL"
+     * @brief Creates a "Press Down" combo on ALL controllers (Conflict Checked).
      *
-     * See: @CreateComboPressDownEx for more information.
-     *
-     * The returned objected will automatically remove the button combo in the destructor. Make sure to keep it around
-     * along as the button combo should be valid! You have to use `std::move` to move it around.
-    */
+     * Wrapper for @ref CreateComboPressDownEx with `observer=false` and `mask=ALL`.
+     * @sa ButtonComboModule_AddButtonComboPressDown
+     */
     std::optional<ButtonCombo> CreateComboPressDown(std::string_view label,
                                                     ButtonComboModule_Buttons combo,
                                                     ButtonComboModule_ComboCallback callback,
@@ -494,14 +574,11 @@ namespace ButtonComboModule {
                                                     ButtonComboModule_Error &outError) noexcept;
 
     /**
-     * Wrapper for `CreateComboPressDownEx` with `observer` set to "true" and `controllerMask` set to
-     * "BUTTON_COMBO_MODULE_CONTROLLER_ALL"
+     * @brief Creates a "Press Down" combo on ALL controllers (Observer).
      *
-     * See: @CreateComboPressDownEx for more information.
-     *
-     * The returned objected will automatically remove the button combo in the destructor. Make sure to keep it around
-     * along as the button combo should be valid! You have to use `std::move` to move it around.
-    */
+     * Wrapper for @ref CreateComboPressDownEx with `observer=true` and `mask=ALL`.
+     * @sa ButtonComboModule_AddButtonComboPressDownEx
+     */
     std::optional<ButtonCombo> CreateComboPressDownObserver(std::string_view label,
                                                             ButtonComboModule_Buttons combo,
                                                             ButtonComboModule_ComboCallback callback,
@@ -510,29 +587,23 @@ namespace ButtonComboModule {
                                                             ButtonComboModule_Error &outError) noexcept;
 
     /**
-     * Creates a button combo which triggers a callback if a given button Combination has been hold for given duration.
+     * @brief Creates a "Hold" combo.
      *
-     * This function creates a "Hold"-combo. This means the callback is triggered once the combo is hold for a given duration
-     * on one of the provided controllers. The provided controller mask can be a combination of any `ButtonComboModule_ControllerTypes` values.
+     * @details Triggers after buttons are held for a duration.
+     * Refer to @ref ButtonComboModule_AddButtonComboHoldEx for parameter details.
      *
-     *  The "observer" parameter defines if this button combo should check for conflicts with other button combos.
-     *
-     *  See: @CreateComboEx for more information about the details.
-     *
-     * The returned objected will automatically remove the button combo in the destructor. Make sure to keep it around
-     * along as the button combo should be valid! You have to use `std::move` to move it around.
-     *
-     * @param label Label of this button combo
-     * @param controllerMask Mask of controllers which should be checked. Must not be empty.
-     * @param combo Combination which should be checked. Must not be empty.
-     * @param holdDurationInMs Defines how long the button combination need to be hold down. Must not be 0.
-     * @param callback Callback that will be called if a button combo is detected. Must not be nullptr.
-     * @param context Context for the callback
-     * @param observer Defines if this combo should check for conflicts. Set to "true" to be an observer and ignore conflicts.
-     * @param outStatus The status of the combo will be stored here. Only if the status is BUTTON_COMBO_MODULE_COMBO_STATUS_VALID the combo is valid. Must not be nullptr.
-     * @param outError The error of this operation will be stored here. Only if the error is BUTTON_COMBO_MODULE_ERROR_SUCCESS creating the combo was successful. Must not be nullptr.
-     * @return An optional `ButtonCombo` object if the combo registration succeeds; otherwise, an empty optional.
-    */
+     * @param label             Debug label.
+     * @param controllerMask    Controllers to listen to.
+     * @param combo             Button bitmask.
+     * @param holdDurationInMs  Hold time in ms.
+     * @param callback          Function to call.
+     * @param context           User data.
+     * @param observer          If true, ignore conflicts.
+     * @param[out] outStatus    Resulting status.
+     * @param[out] outError     Resulting error code.
+     * @return A `ButtonCombo` object on success, or `std::nullopt` on failure.
+     * @sa ButtonComboModule_AddButtonComboHoldEx
+     */
     std::optional<ButtonCombo> CreateComboHoldEx(std::string_view label,
                                                  ButtonComboModule_ControllerTypes controllerMask,
                                                  ButtonComboModule_Buttons combo,
@@ -544,14 +615,11 @@ namespace ButtonComboModule {
                                                  ButtonComboModule_Error &outError) noexcept;
 
     /**
-     * Wrapper for `CreateComboHoldEx` with `observer` set to "false" and `controllerMask` set to
-     * "BUTTON_COMBO_MODULE_CONTROLLER_ALL"
+     * @brief Creates a "Hold" combo on ALL controllers (Conflict Checked).
      *
-     * See: @CreateComboHoldEx for more information.
-     *
-     * The returned objected will automatically remove the button combo in the destructor. Make sure to keep it around
-     * along as the button combo should be valid! You have to use `std::move` to move it around.
-    */
+     * Wrapper for @ref CreateComboHoldEx with `observer=false` and `mask=ALL`.
+     * @sa ButtonComboModule_AddButtonComboHold
+     */
     std::optional<ButtonCombo> CreateComboHold(std::string_view label,
                                                ButtonComboModule_Buttons combo,
                                                uint32_t holdDurationInMs,
@@ -561,14 +629,11 @@ namespace ButtonComboModule {
                                                ButtonComboModule_Error &outError) noexcept;
 
     /**
-     * Wrapper for `CreateComboHoldEx` with `observer` set to "true" and `controllerMask` set to
-     * "BUTTON_COMBO_MODULE_CONTROLLER_ALL"
+     * @brief Creates a "Hold" combo on ALL controllers (Observer).
      *
-     * See: @CreateComboHoldEx for more information.
-     *
-     * The returned objected will automatically remove the button combo in the destructor. Make sure to keep it around
-     * along as the button combo should be valid! You have to use `std::move` to move it around.
-    */
+     * Wrapper for @ref CreateComboHoldEx with `observer=true` and `mask=ALL`.
+     * @sa ButtonComboModule_AddButtonComboHoldEx
+     */
     std::optional<ButtonCombo> CreateComboHoldObserver(std::string_view label,
                                                        ButtonComboModule_Buttons combo,
                                                        uint32_t holdDurationInMs,
@@ -578,8 +643,11 @@ namespace ButtonComboModule {
                                                        ButtonComboModule_Error &outError) noexcept;
 
     /**
-    *  Same as @CreateComboEx, but throwing an exception on error instead of returning an optional.
-    */
+     * @brief Creates a "Press Down" combo (Throwing).
+     *
+     * @details Same as @ref CreateComboPressDownEx but throws on error.
+     * @throws std::runtime_error if creation fails (e.g. invalid arguments or uninitialized lib).
+     */
     ButtonCombo CreateComboPressDownEx(std::string_view label,
                                        ButtonComboModule_ControllerTypes controllerMask,
                                        ButtonComboModule_Buttons combo,
@@ -587,25 +655,33 @@ namespace ButtonComboModule {
                                        void *context,
                                        bool observer,
                                        ButtonComboModule_ComboStatus &outStatus);
+
     /**
-    *  Same as @CreateComboEx, but throwing an exception on error instead of returning an optional.
-    */
+     * @brief Creates a "Press Down" combo on ALL controllers (Throwing).
+     * @sa CreateComboPressDownEx
+     */
     ButtonCombo CreateComboPressDown(std::string_view label,
                                      ButtonComboModule_Buttons combo,
                                      ButtonComboModule_ComboCallback callback,
                                      void *context,
                                      ButtonComboModule_ComboStatus &outStatus);
+
     /**
-    *  Same as @CreateComboPressDownObserver, but throwing an exception on error instead of returning an optional.
-    */
+     * @brief Creates a "Press Down" Observer combo on ALL controllers (Throwing).
+     * @sa CreateComboPressDownObserver
+     */
     ButtonCombo CreateComboPressDownObserver(std::string_view label,
                                              ButtonComboModule_Buttons combo,
                                              ButtonComboModule_ComboCallback callback,
                                              void *context,
                                              ButtonComboModule_ComboStatus &outStatus);
+
     /**
-    *  Same as @CreateComboHoldEx, but throwing an exception on error instead of returning an optional.
-    */
+     * @brief Creates a "Hold" combo (Throwing).
+     *
+     * @details Same as @ref CreateComboHoldEx but throws on error.
+     * @throws std::runtime_error if creation fails.
+     */
     ButtonCombo CreateComboHoldEx(std::string_view label,
                                   ButtonComboModule_ControllerTypes controllerMask,
                                   ButtonComboModule_Buttons combo,
@@ -614,18 +690,22 @@ namespace ButtonComboModule {
                                   void *context,
                                   bool observer,
                                   ButtonComboModule_ComboStatus &outStatus);
+
     /**
-    *  Same as @CreateComboHold, but throwing an exception on error instead of returning an optional.
-    */
+     * @brief Creates a "Hold" combo on ALL controllers (Throwing).
+     * @sa CreateComboHold
+     */
     ButtonCombo CreateComboHold(std::string_view label,
                                 ButtonComboModule_Buttons combo,
                                 uint32_t holdDurationInMs,
                                 ButtonComboModule_ComboCallback callback,
                                 void *context,
                                 ButtonComboModule_ComboStatus &outStatus);
+
     /**
-    *  Same as @CreateComboHoldObserver, but throwing an exception on error instead of returning an optional.
-    */
+     * @brief Creates a "Hold" Observer combo on ALL controllers (Throwing).
+     * @sa CreateComboHoldObserver
+     */
     ButtonCombo CreateComboHoldObserver(std::string_view label,
                                         ButtonComboModule_Buttons combo,
                                         uint32_t holdDurationInMs,
@@ -634,14 +714,20 @@ namespace ButtonComboModule {
                                         ButtonComboModule_ComboStatus &outStatus);
 
     /**
-    * See @ButtonComboModule_CheckComboAvailable
-    */
+     * @brief Checks if a combo is available.
+     *
+     * Wrapper for @ref ButtonComboModule_CheckComboAvailable.
+     * @sa ButtonComboModule_CheckComboAvailable
+     */
     ButtonComboModule_Error CheckComboAvailable(const ButtonComboModule_ButtonComboOptions &options,
                                                 ButtonComboModule_ComboStatus &outStatus);
 
     /**
-    * See @ButtonComboModule_DetectButtonCombo_Blocking
-    */
+     * @brief Blocks execution until a combo is detected.
+     *
+     * Wrapper for @ref ButtonComboModule_DetectButtonCombo_Blocking.
+     * @sa ButtonComboModule_DetectButtonCombo_Blocking
+     */
     ButtonComboModule_Error DetectButtonCombo_Blocking(const ButtonComboModule_DetectButtonComboOptions &options,
                                                        ButtonComboModule_Buttons &outButtons);
 } // namespace ButtonComboModule
